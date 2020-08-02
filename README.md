@@ -1,4 +1,4 @@
-*I just wanted to get list of up and running King Arthur's Gold servers without requirement to open discord*
+*I just wanted to get list of active King Arthur's Gold servers without requirement to open discord*
 
 **Usage**:
 
