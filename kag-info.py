@@ -4,6 +4,7 @@
 import requests #to get json with data from kag's api
 import json #to turn json into python's dictionary
 import re #to remove MODS USED part from description of modded servers
+import argparse #for launch arguments used to do various shenanigans with output
 
 kagprefix = "kag://"
 
@@ -55,7 +56,22 @@ def players_amount(x):
 
 ##Usage
 if __name__ == "__main__":
-    print("Awaiting response from kag api...")
+    #argparse shenanigans
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("-ni", "--nointro", help="Doesnt show info message about connecting to api", action="store_true")
+    argparser.add_argument("-nd", "--nodetails", help="Only shows global online statistics, without detailed info about active servers", action="store_true")
+    argparser.add_argument("-sm", "--skip_modded", help="Shows only vanilla (non-modded) servers", action="store_true")
+    argparser.add_argument("-sv", "--skip_vanilla", help="Shows only modded servers", action="store_true")
+    argparser.add_argument("-spr", "--skip_private", help="Shows only public servers", action="store_true")
+    argparser.add_argument("-spu", "--skip_public", help="Shows only password-protected servers", action="store_true")
+    argparser.add_argument("-sf", "--skip_full", help="Shows only servers that have free space", action="store_true")
+    argparser.parse_args()
+
+    args = argparser.parse_args()
+
+    if not args.nointro:
+        print("Awaiting response from kag api...")
+
     servers = kag_servers()
     active_servers = alive_servers(servers)
     #Sort list of active servers by amount of players on them. More on beginning, less on the end
@@ -66,6 +82,17 @@ if __name__ == "__main__":
 
     print("There are currently {} active servers with {} players".format(online, players))
 
-    print("-------------\nServers info:")
-    for x in active_servers:
-        server_info(x)
+    if not args.nodetails:
+        print("-------------\nServers info:")
+        for x in active_servers:
+            if args.skip_modded and x['usingMods']:
+                continue
+            if args.skip_vanilla and not x['usingMods']:
+                continue
+            if args.skip_private and x['password']:
+                continue
+            if args.skip_public and not x['password']:
+                continue
+            if args.skip_full and (len(x['playerList']) >= int(x['maxPlayers'])):
+                continue
+            server_info(x)
