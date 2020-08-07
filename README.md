@@ -11,7 +11,9 @@
 
 **Screenshots**:
 
-![Example Output](https://files.catbox.moe/dipn5s.png?raw=true)
+![Default output](https://files.catbox.moe/dipn5s.png?raw=true)
+![Filtered output](https://files.catbox.moe/6i4m1i.png?raw=true)
+![List of available options](https://files.catbox.moe/n32ecr.png?raw=true)
 
 **Limitations**:
 
