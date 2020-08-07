@@ -1,7 +1,9 @@
 ##Script that prints info about active King Arthur's Gold servers into terminal. Inspired by bot used on official kag's discord, except it doesnt require discord to function
 
-import requests
-import json
+##Imports
+import requests #to get json with data from kag's api
+import json #to turn json into python's dictionary
+import re #to remove MODS USED part from description of modded servers
 
 kagprefix = "kag://"
 
@@ -31,19 +33,21 @@ def player_amount(servers):
 def server_info(server):
     '''Expects to receive dictionary featuring server's info. Prints interesting entries out of it'''
     name = server['name']
-    #description = server['description'] #this one is kinda messy, coz it also contains info about used mods, and its all over the place. Thus Im not using it
+    raw_description = server['description'] #this one is kinda messy, coz it also contains info about used mods, and its all over the place. Blame kag api for that
+    description = re.sub("\n\n.*", "", raw_description) #because of reason above, Im cleaning it up. MODS USED usually go after two empty lines, so I delet them and everything after
     ip = server['IPv4Address']
     port = server['port']
+    password_protected = server['password']
     kaglink = kagprefix+str(ip)+":"+str(port)
     gamemode = server['gameMode']
+    using_mods = server['usingMods']
     players = len(server['playerList'])
     maxplayers = server['maxPlayers']
     player_amount = str(players)+"/"+str(maxplayers)
     spectators = server['spectatorPlayers']
-    private = server['password']
     nicknames = ', '.join(server['playerList'])
 
-    print("\nName: {}\nAddress: {}\nGamemode: {}\nPlayers: {} \nSpectators: {} \nCurrently playing: {}".format(name, kaglink, gamemode, player_amount, spectators, nicknames))
+    print("\nName: {}\nDescription: {}\nAddress: {}\nRequires Password: {}\nGamemode: {}\nUsing Mods: {}\nPlayers: {} \nSpectators: {} \nCurrently Playing: {}".format(name, description, kaglink, password_protected, gamemode, using_mods, player_amount, spectators, nicknames))
 
 def players_amount(x):
     '''Receives dictionary entry with server's info. Returns amount of players on server'''
