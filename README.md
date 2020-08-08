@@ -11,7 +11,8 @@
 
 **Screenshots**:
 
-![Default output](https://files.catbox.moe/dipn5s.png?raw=true)
+![Default output](https://files.catbox.moe/cadr0i.png?raw=true)
+
 ![List of available options](https://files.catbox.moe/upp8uo.png?raw=true)
 
 **Limitations**:
