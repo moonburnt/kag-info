@@ -57,8 +57,7 @@ if __name__ == "__main__":
     import argparse #for launch arguments used to do various shenanigans with output
     from time import sleep #for autoupdate
     from subprocess import call #for clean_terminal
-
-    kagprefix = "kag://"
+    from gc import collect #to manually remove old dictionaries from memory in automated mode
 
     ##Functions that serve no purpose outside of this script
     def clean_terminal():
@@ -75,6 +74,7 @@ if __name__ == "__main__":
 
     def infomaker(serverlist):
         '''Receives list of servers, returns list of lists of descriptions based on argparse flags'''
+        kagprefix = "kag://"
         detailed_info = []
         for server in serverlist:
             server_info = []
@@ -93,7 +93,10 @@ if __name__ == "__main__":
                 description = replace("\n\n.*", "", raw_description) #because of reason above, Im cleaning it up. MODS USED usually go after two empty lines, so I delet them and everything after
                 server_info.append("Description: {}".format(description))
             if not args.hide_country:
-                country = server_country(ip)
+                try:
+                    country = server_country(ip)
+                except:
+                    country = "Unknown"
                 server_info.append("Country: {}".format(country))
             server_info.append("Address: {}".format(kaglink))
             if not args.hide_ping:
@@ -136,15 +139,29 @@ if __name__ == "__main__":
     argparser.add_argument("-hp", "--hide_protection", help="Hide state of server's password protection", action="store_true")
     argparser.add_argument("-hm", "--hide_mods", help="Hide state of server's mods usage", action="store_true")
     argparser.add_argument("-hpi", "--hide_ping", help="Hide ping to server", action="store_true")
-    argparser.add_argument("-au", "--autoupdate", help="Autoupdate server list each 30 secs", action="store_true")
+    argparser.add_argument("-au", "--autoupdate", help="Autoupdate server list each X seconds (not less than 10)", type=int)
+    argparser.add_argument("-sb", "--sortby", help="Sort servers in output by specified info", type=str, choices = ["more_players", "mp", "less_players", "lp"])
     args = argparser.parse_args()
+
+    #set lowest possible amount of time between requests to be 10
+    if args.autoupdate:
+        if args.autoupdate < 10:
+            args.autoupdate = 10
 
     if not args.nointro:
         print("Awaiting response from kag api...")
 
     try:
         while True:
-            servers = kag_servers()
+            try:
+                servers = kag_servers()
+            except requests.exceptions.ReadTimeout:
+                print("Couldnt connect to kag api: response took too long. Abort")
+                break
+            except requests.exceptions.ConnectionError:
+                print("Couldnt connect to kag api: network unreachable. Abort")
+                break
+
             active_servers = alive_servers(servers)
 
             online = len(active_servers)
@@ -169,18 +186,26 @@ if __name__ == "__main__":
                         filtered_servers.remove(server)
 
                 #filter details by flags
-                filtered_servers.sort(key = players_amount, reverse = True)
+                if args.sortby == "more_players" or args.sortby == "mp":
+                    filtered_servers.sort(key = players_amount, reverse = True)
+                elif args.sortby == "less_players" or args.sortby == "lp":
+                    filtered_servers.sort(key = players_amount)
+                else:
+                    pass
+
                 details = infomaker(filtered_servers)
 
             #printing stuff
             print("There are currently {} active servers with {} players".format(online, players))
             if not args.nodetails and details:
-                print("-------------\nServers info:")
+                print("-------------\nDetails:")
                 for x in details:
                     print(*x, sep="\n")
             if not args.autoupdate:
                 break
-            print("-------------\nStatics will update each 30 seconds. Press Ctrl+C to exit at any time")
-            sleep(30)
+            print("-------------\nStatistics will update each {} seconds. Press Ctrl+C to exit at any time".format(args.autoupdate))
+            del servers, active_servers, filtered_servers, details, online, players
+            collect()
+            sleep(args.autoupdate)
     except KeyboardInterrupt:
         pass
