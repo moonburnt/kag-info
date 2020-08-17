@@ -68,59 +68,65 @@ if __name__ == "__main__":
             command = 'clear'
         call(command)
 
-    def players_amount(x):
-        '''Receives dictionary entry with server's info. Returns amount of players on server'''
-        return len(x.get('playerList'))
-
     def infomaker(serverlist):
         '''Receives list of servers, returns list of lists of descriptions based on argparse flags'''
         kagprefix = "kag://"
         detailed_info = []
         for server in serverlist:
-            server_info = []
+            server_info = {}
 
-            name = server['name']
-            ip = server['IPv4Address']
-            port = server['port']
-            kaglink = kagprefix+str(ip)+":"+str(port)
-            players = len(server['playerList'])
-            maxplayers = server['maxPlayers']
-            player_amount = str(players)+"/"+str(maxplayers)
-
-            server_info.append("\nName: {}".format(name))
+            server_info['name'] = server['name']
             if not args.hide_description:
                 raw_description = server['description'] #this one is kinda messy, coz it also contains info about used mods, and its all over the place. Blame kag api for that
                 description = replace("\n\n.*", "", raw_description) #because of reason above, Im cleaning it up. MODS USED usually go after two empty lines, so I delet them and everything after
-                server_info.append("Description: {}".format(description))
+                server_info['description'] = description
             if not args.hide_country:
                 try:
-                    country = server_country(ip)
+                    country = server_country(server['IPv4Address'])
                 except:
                     country = "Unknown"
-                server_info.append("Country: {}".format(country))
-            server_info.append("Address: {}".format(kaglink))
+                server_info['country'] = country
+            kaglink = kagprefix+str(server['IPv4Address'])+":"+str(server['port'])
+            server_info['address'] = kaglink
             if not args.hide_ping:
-                ping = server_ms(ip)
-                server_info.append("Ping: {} ms".format(ping))
+                ping = server_ms(server['IPv4Address'])
+                server_info['ping'] = ping
             if not args.hide_protection:
-                password_protected = server['password']
-                server_info.append("Requires Password: {}".format(password_protected))
+                server_info['password'] = server['password']
             if not args.hide_gamemode:
-                gamemode = server['gameMode']
-                server_info.append("Gamemode: {}".format(gamemode))
+                server_info['gamemode'] = server['gameMode']
             if not args.hide_mods:
-                using_mods = server['usingMods']
-                server_info.append("Using Mods: {}".format(using_mods))
-            server_info.append("Players: {}".format(player_amount))
+                server_info['using_mods'] = server['usingMods']
+            players = len(server['playerList'])
+            server_info['players'] = players
+            maxplayers = server['maxPlayers']
+            player_amount = str(players)+"/"+str(maxplayers)
+            server_info['player_amount'] = player_amount
             if not args.hide_spectators:
-                spectators = server['spectatorPlayers']
-                server_info.append("Spectators: {}".format(spectators))
+                server_info['spectators'] = server['spectatorPlayers']
             if not args.hide_names:
                 nicknames = ', '.join(server['playerList'])
-                server_info.append("Currently Playing: {}".format(nicknames))
+                server_info['nicknames'] = nicknames
             detailed_info.append(server_info)
 
         return detailed_info
+
+    #keys for sorting
+    def sort_by_players(x):
+        '''Sort received list by int of ['players'] in its dictionaries'''
+        return int(x.get('players'))
+
+    def sort_by_ping(x):
+        '''Sort received list by float of ['ping'] in its dictionaries'''
+        return float(x.get('ping'))
+
+    def sort_by_country(x):
+        '''Sort received list by str of ['country'] in its dictionaries'''
+        return str(x.get('country'))
+
+    def sort_by_gamemode(x):
+        '''Sort received list by str of ['gamemode'] in its dictionaries'''
+        return str(x.get('gamemode'))
 
     #argparse shenanigans
     argparser = argparse.ArgumentParser()
@@ -139,14 +145,13 @@ if __name__ == "__main__":
     argparser.add_argument("-hp", "--hide_protection", help="Hide state of server's password protection", action="store_true")
     argparser.add_argument("-hm", "--hide_mods", help="Hide state of server's mods usage", action="store_true")
     argparser.add_argument("-hpi", "--hide_ping", help="Hide ping to server", action="store_true")
-    argparser.add_argument("-au", "--autoupdate", help="Autoupdate server list each X seconds (not less than 10)", type=int)
-    argparser.add_argument("-sb", "--sortby", help="Sort servers in output by specified info", type=str, choices = ["more_players", "mp", "less_players", "lp"])
+    argparser.add_argument("-au", "--autoupdate", help="Autoupdate server list each X seconds (not less than 10). Default = 10", nargs='?', const=10, type=int)
+    argparser.add_argument("-sb", "--sortby", help="Sort servers in output by specified info", type=str, choices = ["more_players", "mp", "less_players", "lp", "ping", "ms", "country", "cn", "gamemode", "gm"])
     args = argparser.parse_args()
 
     #set lowest possible amount of time between requests to be 10
-    if args.autoupdate:
-        if args.autoupdate < 10:
-            args.autoupdate = 10
+    if args.autoupdate < 10:
+        args.autoupdate = 10
 
     if not args.nointro:
         print("Awaiting response from kag api...")
@@ -184,25 +189,54 @@ if __name__ == "__main__":
                         filtered_servers.remove(server)
                     if args.skip_full and (len(server['playerList']) >= int(server['maxPlayers'])):
                         filtered_servers.remove(server)
+                #building list with provided details of filtered servers
+                details = infomaker(filtered_servers)
 
-                #filter details by flags
+                #sorting details by flags
                 if args.sortby == "more_players" or args.sortby == "mp":
-                    filtered_servers.sort(key = players_amount, reverse = True)
+                    details.sort(key = sort_by_players, reverse = True)
                 elif args.sortby == "less_players" or args.sortby == "lp":
-                    filtered_servers.sort(key = players_amount)
+                    details.sort(key = sort_by_players)
+                elif (not args.hide_ping and args.sortby == "ping") or (not args.hide_ping and args.sortby == "ms"):
+                    details.sort(key = sort_by_ping)
+                elif (not args.hide_country and args.sortby == "country") or (not args.hide_country and args.sortby == "cn"):
+                    details.sort(key = sort_by_country)
+                elif (not args.hide_gamemode and args.sortby == "gamemode") or (not args.hide_gamemode and args.sortby == "gm"):
+                    details.sort(key = sort_by_gamemode)
                 else:
                     pass
-
-                details = infomaker(filtered_servers)
 
             #printing stuff
             print("There are currently {} active servers with {} players".format(online, players))
             if not args.nodetails and details:
                 print("-------------\nDetails:")
-                for x in details:
-                    print(*x, sep="\n")
+                for server in details:
+                    for field in server:
+                        if field == 'name':
+                            print("\nName: {}".format(server[field]))
+                        if field == 'description':
+                            print("Description: {}".format(server[field]))
+                        if field == 'country':
+                            print("Country: {}".format(server[field]))
+                        if field == 'address':
+                            print("Address: {}".format(server[field]))
+                        if field == 'ping':
+                            print("Ping: {} ms".format(server[field]))
+                        if field == 'password':
+                            print("Requires Password: {}".format(server[field]))
+                        if field == 'gamemode':
+                            print("Gamemode: {}".format(server[field]))
+                        if field == 'using_mods':
+                            print("Using Mods: {}".format(server[field]))
+                        if field == 'player_amount':
+                            print("Players: {}".format(server[field]))
+                        if field == 'spectators':
+                            print("Spectators: {}".format(server[field]))
+                        if field == 'nicknames':
+                            print("Currently Playing: {}".format(server[field]))
             if not args.autoupdate:
                 break
+
             print("-------------\nStatistics will update each {} seconds. Press Ctrl+C to exit at any time".format(args.autoupdate))
             del servers, active_servers, filtered_servers, details, online, players
             collect()
