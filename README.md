@@ -17,7 +17,7 @@
 
 **Limitations**:
 
-- Well, its terminal application. No fancy gui, no fancy pictures. I may add wxpython gui, if I will get interested enough to learn it
+- Well, its terminal application. No fancy gui, no fancy pictures. But thats the way things go
 
 **License**:
 
