@@ -150,8 +150,9 @@ if __name__ == "__main__":
     args = argparser.parse_args()
 
     #set lowest possible amount of time between requests to be 10
-    if args.autoupdate < 10:
-        args.autoupdate = 10
+    if args.autoupdate:
+        if args.autoupdate < 10:
+            args.autoupdate = 10
 
     if not args.nointro:
         print("Awaiting response from kag api...")
