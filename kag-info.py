@@ -99,6 +99,8 @@ if __name__ == "__main__":
     if not args.nointro:
         print("Awaiting response from kag api...")
 
+    known_server_countries = []
+
     try:
         while True:
             try:
@@ -116,9 +118,6 @@ if __name__ == "__main__":
             players = 0
             for x in active_servers:
                 players += len(x['playerList'])
-
-            if args.autoupdate:
-                clean_terminal()
 
             if not args.nodetails:
                 #filtering servers by flags
@@ -140,13 +139,28 @@ if __name__ == "__main__":
                         clean_description = replace("\n\n.*", "", server['description']) #MODS USED usually go after two empty lines, so I delet them and everything after
                         server['clean_description'] = clean_description
                     if not args.hide_country:
-                        try:
-                            country = server_country(server['IPv4Address'])
-                        except:
-                            country = "Unknown"
+                        country = None
+                        #checking if we already have data regarding that ip's country in memory
+                        for item in known_server_countries:
+                            if item['ip'] == server['IPv4Address']:
+                                country = item['country']
+                            else:
+                                continue
+                        if not country:
+                            try:
+                                country = server_country(server['IPv4Address'])
+                                x = {}
+                                x['ip'] = server['IPv4Address']
+                                x['country'] = country
+                                known_server_countries.append(x)
+                            except:
+                                country = "Unknown"
                         server['country'] = country
                     if not args.hide_ping:
-                        ping = server_ms(server['IPv4Address'])
+                        try:
+                            ping = server_ms(server['IPv4Address'])
+                        except:
+                            ping = "999"
                         server['ping'] = ping
 
                 #sorting details by flags
@@ -166,6 +180,9 @@ if __name__ == "__main__":
             #setting the amount of servers in output
             if not args.limit or (args.limit > len(filtered_servers)) or (args.limit < 0):
                 args.limit = len(filtered_servers)
+
+            if args.autoupdate:
+                clean_terminal()
 
             #printing stuff
             print("There are currently {} active servers with {} players".format(online, players))
